@@ -1,0 +1,32 @@
+- sudo su -
+- apt-get update ; apt-get -y install curl
+- curl -sSL https://raw.github.com/learning-nagios/nagios-install/master/install.sh | sh
+
+E: Unable to locate package libgd2-xpm-dev
+E: Package 'libapache2-mod-php5' has no installation candidate
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

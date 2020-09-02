@@ -1,0 +1,394 @@
+- Installation Nagios
+	- sudo apt update
+	- sudo apt-get install build-essential libssl-dev gcc
+	- apt install apache2 libapache2-mod-php php
+	- apt install wget unzip zip autoconf gcc libc6 make apache2-utils libgd-dev
+	- sudo apt install apache2 libapache2-mod-php php
+	- sudo apt install wget unzip zip autoconf gcc libc6 make apache2-utils libgd-dev
+
+	- wget https://assets.nagios.com/downloads/nagioscore/releases/nagios-4.4.6.tar.gz
+	- wget http://www.nagios-plugins.org/download/nagios-plugins-2.1.1.tar.gz
+
+	- sudo adduser --system --no-create-home --disabled-login --group nagios
+	- sudo groupadd nagcmd
+	- sudo usermod -G nagcmd,www-data nagios
+	- id nagios
+
+	- tar -zxvf nagios-4.4.6.tar.gz
+	- cd nagios-4.4.6
+	- ./configure -h
+	- ./configure --with-httpd-conf=/etc/apache2/sites-enabled
+
+	- sudo make all install
+	- sudo make install-init
+	- sudo make install-config
+	- sudo make install-commandmode
+
+	- systemctl enable nagios.service
+	- make install-config
+	- make install-webconf
+	- htpasswd -c /usr/local/nagios/etc/htpasswd.users nagiosadmin
+	- a2enmod cgi
+
+	- sudo systemctl restart apache2
+	- systemctl restart apache2
+	- systemctl start nagios
+	- systemctl enable nagios
+	- systemctl status nagios
+
+	- Try to acces from browser:
+		- http://IP-Address/nagios (and give the credentials generate above: username - nagiosadmin, password - ....)
+
+	- sudo ln -s /usr/local/nagios-4.4.6/ /usr/local/nagios
+	- ls -l /usr/local/nagios
+	- sudo ln -s /usr/local/nagios/etc/ /etc/nagios
+	- ls -l /etc/nagios
+
+	- sudo mkdir /var/log/nagios
+	- sudo chown nagios:nagios /var/log/nagios
+	- nano /etc/nagios/nagios.cfg (and edit the follow line like)
+		log_file=/var/log/nagios/nagios.log
+
+	- cd ~
+	- tar -zxvf nagios-plugins-2.1.1.tar.gz
+	- cd nagios-plugins-2.1.1
+	- ./configure --with-nagios-user=nagios --with-nagios-group=nagios
+
+	- sudo make install
+	- ls /usr/local/nagios/libexec/
+
+	- sudo /usr/local/nagios/bin/nagios -v /etc/nagios/nagios.cfg
+	- sudo service nagios start
+	- sudo service nagios status
+
+
+- Configuring Nagios
+	- sudo nano /etc/nagios/nagios.cfg(and comment as follow and add the new line as follow)
+		# LOG FILE
+		# This is the main log file where service and host events are logged
+		# for historical purposes.  This should be the first option specified
+		# in the config file!!!
+		log_file=/var/log/nagios/nagios.log
+		# You can specify individual object config files as shown below:
+		#cfg_file=/usr/local/nagios/etc/objects/commands.cfg
+		#cfg_file=/usr/local/nagios/etc/objects/contacts.cfg
+		#cfg_file=/usr/local/nagios/etc/objects/timeperiods.cfg
+		#cfg_file=/usr/local/nagios/etc/objects/templates.cfg
+		# object configuration directory 
+		cfg_dir=/etc/nagios/objects
+		# storage information 
+		resource_file=/etc/nagios/resource.cfg 
+		status_file=/var/nagios/status.dat 
+		status_update_interval=10
+
+	- For Nagios to read the configuration from these directories,
+	  edit your main Nagios configuration file (sudo nano /etc/nagios/nagios.cfg),
+	  remove all the cfg_file and cfg_dir entries, and add the following ones:
+		cfg_dir=/etc/nagios/commands 
+		cfg_dir=/etc/nagios/timeperiods 
+		cfg_dir=/etc/nagios/contacts 
+		cfg_dir=/etc/nagios/contactgroups 
+		cfg_dir=/etc/nagios/hosts 
+		cfg_dir=/etc/nagios/hostgroups 
+		cfg_dir=/etc/nagios/services 
+		cfg_dir=/etc/nagios/servicegroups
+
+	- cd /etc/nagios
+	- mkdir commands timeperiods contacts contactgroups hosts hostgroups services servicegroups
+	- sudo rm -rf objects/windows.cfg~ 
+  	- sudo rm -rf objects/switch.cfg~ 
+  	- sudo rm -rf objects/printer.cfg~ 
+  	- ls -l objects/
+	- sudo /usr/local/nagios/bin/nagios -v /etc/nagios/nagios.cfg
+	- sudo service nagios start
+	- sudo service nagios status
+	- cp /etc/nagios/objects/commands.cfg /etc/nagios/commands/default.cfg
+
+	- Set as follows in your /etc/nagios/nagios.cfg file:
+		check_external_commands=1
+		interval_length=60
+		accept_passive_service_checks=1
+		accept_passive_host_checks=1
+	
+	- sudo nano /etc/nagios/objects/templates.cfg(check and change the values for each HOST TEMPLATE - "define host/define service")
+		
+	- sudo nano /etc/nagios/hosts/hosts.cfg
+		...............................
+		define host{
+			use          linux-server
+			host_name    centos7-server
+			alias        centos7-server
+			address      192.168.1.102
+			}
+
+		define host{
+			use          linux-server
+			host_name    ubuntu18-server
+			alias        ubuntu18-server
+			address      192.168.1.103
+			}
+		................................
+
+
+	- sudo nano /etc/nagios/services/services.cfg
+		define service {
+			use                    generic-service
+			host                   ubuntu18-server,ubuntu19-server.......
+			service_description    HTTP
+			check_command          check_http
+			}
+
+	- sudo nano /etc/nagios/objects/localhost.cfg(and add a different hosts to monitoring metrics)
+		define service {
+
+		    use                     local-service           ; Name of service template to use
+		    host_name               localhost,ubuntu19-desktop
+		    service_description     PING
+		    check_command           check_ping!100.0,20%!500.0,60%
+		}
+
+
+	- sudo /usr/local/nagios/bin/nagios -v /etc/nagios/nagios.cfg
+	- sudo service nagios restart
+	- sudo service nagios status
+
+	- Check if port send packets throught port 80
+		- /usr/local/nagios/libexec/check_tcp -H 192.168.1.102 -p 80
+
+	- Try refresh from browser and see if new host is add to nagios hosts:
+		- http://IP-Address/nagios
+
+
+	- Most important!!!
+		on the hosts which were added in the config files to monitoring with nagios: hosts.cfg/services.cfg,
+		we need to have installed the apache2/httpd service and check connection with below command:
+			- /usr/local/nagios/libexec/check_tcp -H 192.168.1.102(3/4/etc) -p 80
+
+			- sudo yum install httpd / sudo apt install apache2
+			- sudo systemctl enable httpd / sudo systemctl enable apache2
+			- sudo systemctl start httpd / sudo systemctl start apache2
+			- sudo ss -alnt / sudo netstat -tulpn
+
+		- on centos7 hosts which was included in nagios configuration files for monitoring(hosts.cfg/services.cfg)
+		  will be complicated, must will run follow commands for allow http/https protocols firewall:
+			- sudo firewall-cmd --state
+			- sudo firewall-cmd --get-active-zones
+			- sudo firewall-cmd --zone=public --permanent --add-service=http
+			- sudo firewall-cmd --zone=public --permanent --add-service=https
+			- sudo firewall-cmd --zone=public --add-port=80/tcp
+			- sudo firewall-cmd --zone=public --add-port=443/tcp
+			- sudo firewall-cmd --zone=public --list-ports
+
+			- sudo nano /var/www/html/index.html(and copy in this file the content of /usr/share/httpd/noindex/index.html file)
+			- sudo systemctl restart httpd
+			- sudo systemctl status httpd
+
+			- sudo /usr/local/nagios/bin/nagios -v /etc/nagios/nagios.cfg
+			- sudo service nagios restart
+			- sudo service nagios status
+
+		- if try to install apache2 on ubuntu and returns such errors to us like follow:
+			- "E: The repository 'http://security.ubuntu.com/ubuntu disco-security Release' does not have a Release file.
+			   N: Updating from such a repository can't be done securely, and is therefore disabled by default."
+
+			- fix error above like follow:
+				- sudo sed -i -e 's|disco|eoan|g' /etc/apt/sources.list
+				- sudo apt update
+				- sudo apt install apache2
+
+			- sudo service nagios restart
+			- sudo service nagios status
+
+
+
+- Installing NRPE on certain host(ubuntu/centos7) contain in nagios configuration files: hosts.cfg/services.cfg
+	- sudo apt-get install nagios-nrpe-server nagios-nrpe-plugin / sudo yum install nagios-nrpe nagios-plugins-nrpe
+	- sudo apt-get install gcc make binutils cpp pkg-config libc6-dev libssl-dev openssl
+	- cd nrpe-2.15(in my case)
+	- sudo sh configure --sysconfdir=/etc/nagios --libexecdir=/opt/nagios/plugins --prefix=/opt/nagios --localstatedir=/var/nagios --with-nrpe-user=nagios --with-nrpe-group=nagios --with-nagios-user=nagios --with-nagios-group=nagios --enable-ssl
+
+		- if command above return the errors like these:
+			"checking for SSL headers... SSL headers found in /usr
+			checking for SSL libraries... configure: error: Cannot find ssl libraries", need run followind commands:
+				- find /usr -name libssl.so
+				- sudo sh configure --sysconfdir=/etc/nagios --libexecdir=/opt/nagios/plugins --prefix=/opt/nagios --localstatedir=/var/nagios --with-nrpe-user=nagios --with-nrpe-group=nagios --with-nagios-user=nagios --with-nagios-group=nagios --with-ssl-lib=/usr/lib/x86_64-linux-gnu --enable-ssl
+	
+	- sudo make all
+	- sudo make install-plugin
+	- sudo make install-daemon
+	- groupadd nagios
+	- useradd -g nagios -d /opt/nagios nagios
+	- mkdir /opt/nagios
+	- sudo chown nagios:nagios /opt/nagios
+	- sudo passwd -l nagios
+	- sudo nano /etc/init.d/nrpe
+		#!/bin/sh
+		# 
+		### BEGIN INIT INFO 
+		# Provides:             nrpe 
+		# Required-Start:       $local_fs $syslog $network 
+		# Required-Stop:        $local_fs $syslog $network 
+		# Short-Description:    Starts and stops the NRPE server 
+		# Description:          Starts and stops the NRPE server 
+		### END INIT INFO
+		  
+		is_running() {
+		   pgrep -u nagios nrpe >/dev/null 
+		}
+
+		case "$1" in
+		  start)
+		    echo -n "Starting NRPE: "
+		    if ! is_running ; then
+		      /opt/nagios/bin/nrpe -d -c /etc/nagios/nrpe.cfg
+		    fi
+		    echo "done."
+		    ;;
+		   stop)
+		     echo -n "Stopping NRPE: "
+		     if is_running ; then
+		       pkill -u nagios nrpe
+		       sleep 1
+		       pkill -u nagios -9 nrpe
+		     fi
+		     echo "done."
+		    ;;
+		   restart)
+		     $0 stop
+		     sleep 2
+		     $0 start
+		     ;;
+		   status)
+		     if is_running ; then
+		       echo "NRPE is running"
+		       exit 0
+		     else
+		       echo "NRPE is NOT running"
+		       exit 1
+		     fi
+		     ;;
+		esac
+
+
+	- sudo chmod 0755 /etc/init.d/nrpe
+	- sudo update-rc.d nrpe start / sudo update-rc.d nrpe defaults / chkconfig --level 345 nrpe on
+	- sudo nano sample-config/nrpe.cfg
+		log_facility=daemon
+		pid_file=/var/run/nrpe.pid
+		server_port=5666
+		nrpe_user=nagios
+		nrpe_group=nagios
+		allowed_hosts=192.168.0.1
+		command_timeout=60
+		connection_timeout=300
+		debug=0
+	
+	- command[check_all_procs]=/opt/nagios/plugins/check_procs -w 150 
+	- command[check_swap]=/opt/nagios/plugins/check_swap -w 40% -c 20%
+	- /opt/nagios/plugins/check_nrpe -H 192.168.8.103 -c check_swap / /usr/local/nagios/libexec/check_nrpe -H 192.168.8.103 -c check_swap
+	- sudo service nrpe restart / sudo service nrpe status
+	- sudo service nagios-nrpe-server restart / sudo service nagios-nrpe-server status
+	- /opt/nagios/plugins/check_nrpe -H 192.168.8.102 -p 5666
+
+
+
+
+	- sudo apt-get update
+	- sudo apt-get install apt-transport-https
+
+	- wget 'http://www.nagios-plugins.org/download/nagios-plugins-2.1.1.tar.gz'
+	- wget -O nrpe.tbz 'https://sourceforge.net/projects/nagios/files/nrpe-2.x/nrpe-2.15/nrpe-2.15.tar.gz'
+
+	- tar -zxvf nagios-plugins-2.1.1.tar.gz
+	- tar -zxvf nrpe.tbz
+
+	- sudo adduser --system --no-create-home --disabled-login --group nagios
+
+	- apt update
+	- apt install apache2 libapache2-mod-php php
+	- apt install wget unzip zip autoconf gcc libc6 make apache2-utils libgd-dev
+	- cd nagios-plugins-2.1.1/
+	- ./configure --with-nagios-user=nagios --with-nagios-group=nagios
+	- make install
+	- cd ../nrpe-2.15/
+	- sudo ./configure --enable-command-args
+	- sudo apt install libssl-dev / sudo yum install openssl-devel
+	- sudo ./configure --enable-command-args --with-ssl=/usr/bin/openssl --with-ssl-lib=/usr/lib/x86_64-linux-gnu
+	- make
+	- sudo make install-daemon
+	- ls -l sample-config
+	- sudo cp sample-config/nrpe.cfg /etc/nrpe.cfg
+	- sudo nano /etc/nrpe.cfg(and uncomment and change as follow)
+		..........
+		server_address=0.0.0.0
+		..........
+		allowed_hosts=192.168.1.101(this ip address it's nagios server host ip address)
+		..........
+		dont_blame_nrpe=1
+		..........
+		debug=1
+		..........
+
+	- /usr/local/nagios/bin/nrpe -d -c /etc/nrpe.cfg
+
+
+	- On nagios server will run follow
+		- wget -O nrpe.tbz 'https://sourceforge.net/projects/nagios/files/nrpe-2.x/nrpe-2.15/nrpe-2.15.tar.gz'
+		- tar -zxvf nrpe.tbz
+		- ls -l
+		- cd nrpe-2.15/
+		- sudo apt install libssl-dev
+		- ./configure --enable-command-args --with-ssl=/usr/bin/openssl --with-ssl-lib=/usr/lib/x86_64-linux-gnu
+		- make
+		- sudo make install-plugin
+		- /usr/local/nagios/libexec/check_nrpe -h
+		- sudo apt install policykit-1
+
+
+
+
+sh configure --sysconfdir=/etc/nagios --libexecdir=/opt/nagios/plugins --prefix=/opt/nagios --localstatedir=/var/nagios --with-nrpe-user=nagios --with-nrpe-group=nagios --with-nagios-user=nagios --with-nagios-group=nagios --enable-ssl
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
